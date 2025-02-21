@@ -1,0 +1,41 @@
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Lataa viimeisin koodi
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Ota käyttöön Docker Buildx (ARM-tuki)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Rakennetaan ARM-yhteensopiva Docker-kuva
+      - name: Build ARM-Compatible Docker Image
+        run: |
+          docker buildx build --platform linux/arm/v7 -t jyty-web-backend:latest .
+
+      # Siirrä valmis Docker-kuva Raspberry Pi:lle
+      - name: Transfer Docker Image to Raspberry Pi
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
+          PI_USER: pi
+          PI_HOST: ${{ secrets.RASPBERRY_PI_IP }}
+        run: |
+          echo "$SSH_PRIVATE_KEY" > deploy_key
+          chmod 600 deploy_key
+          docker save jyty-web-backend:latest | bzip2 | ssh -i deploy_key $PI_USER@$PI_HOST "bunzip2 | docker load"
+
+      # Käynnistä Docker-kuva Raspberry Pi:llä
+      - name: Deploy Docker Image on Raspberry Pi
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
+          PI_USER: pi
+          PI_HOST: ${{ secrets.RASPBERRY_PI_IP }}
+          DOCKER_IMAGE: jyty-web-backend:latest
+        run: |
+          ssh -i deploy_key $PI_USER@$PI_HOST << EOF
+          docker stop flask-app || true && docker rm flask-app || true
+          docker run -d --name flask-app -p 5000:5000 $DOCKER_IMAGE
+          EOF

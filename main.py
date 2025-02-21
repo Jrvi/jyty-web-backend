@@ -192,9 +192,6 @@ def event():
 
     :return:
     """
-    decoded_token, error = authenticate_request()
-    if error:
-        return Response(json.dumps({'error': 'Invalid token'}), status=401, mimetype='application/json')
     # Jos request method on GET haetaan kaikki tapahtumat
     if request.method == 'GET':
         # Hakee kannasta kaikki tapahtumat
@@ -211,6 +208,9 @@ def event():
         # Palautetaan tapahtumat
         return Response(json.dumps(events_list), mimetype='application/json'), 200
     else:
+        decoded_token, error = authenticate_request()
+        if error:
+            return Response(json.dumps({'error': 'Invalid token'}), status=401, mimetype='application/json')
         try:
             # otetaan data vastaan
             data = request.get_json()
@@ -236,9 +236,6 @@ def announcement():
 
     :return: tiedotteet
     """
-    decoded_token, error = authenticate_request()
-    if error:
-        return Response(json.dumps({'error': 'Invalid token'}), status=401, mimetype='application/json')
     if request.method == 'GET':
         announcements = Announcement.query.all()
         announcements_list = []
@@ -251,6 +248,9 @@ def announcement():
         return Response(json.dumps(announcements_list), mimetype='application/json'), 200
     else:
         try:
+            decoded_token, error = authenticate_request()
+            if error:
+                return Response(json.dumps({'error': 'Invalid token'}), status=401, mimetype='application/json')
             # Otetaan vastaan pyynnön data
             data = request.get_json()
             title = data['title']
@@ -269,21 +269,27 @@ def announcement():
 
 @app.route('/api/content', methods=['GET', 'POST'])
 def content():
-    decoded_token, error = authenticate_request()
-    if error:
-        return Response(json.dumps({'error': 'Invalid token'}), status=401, mimetype='application/json')
     if request.method == 'GET':
-        content = PageContent.query.all()
-        content_list = []
-        for c in content:
-            content_list.append({
-                'id': c.id,
-                'tag': c.tag,
-                'content': c.content
-            })
-        return Response(json.dumps(content_list), mimetype='application/json'), 200
+        tag = request.args.get('tag')
+        if not tag:
+            contents = PageContent.query.all()
+            contents_list = []
+            for content in contents:
+                contents_list.append({
+                    'id': content.id,
+                    'tag': content.tag,
+                    'content': content.content
+                })
+            return Response(json.dumps(contents_list), mimetype='application/json'), 200
+        content = PageContent.query.filter_by(tag=tag).first()
+        if not content:
+            return Response(json.dumps({'error': 'Content not found'}), status=404, mimetype='application/json')
+        return Response(json.dumps({'content': content.content}), mimetype='application/json'), 200
     else:
         try:
+            decoded_token, error = authenticate_request()
+            if error:
+                return Response(json.dumps({'error': 'Invalid token'}), status=401, mimetype='application/json')
             data = request.get_json()
             tag = data['tag']
             content = data['content']
@@ -294,6 +300,18 @@ def content():
                             mimetype='application/json')
         except Exception as e:
             return Response(json.dumps({'error': str(e)}), status=400, mimetype='application/json')
+
+@app.route('/api/content/<int:id>', methods=['PUT', 'DELETE'])
+def manage_content(id):
+    if request.method == 'PUT':
+        content = PageContent.query.get(id)
+    if not content:
+        return Response(json.dumps({'error': 'Content not found'}), status=404, mimetype='application/json')
+    data = request.get_json()
+    content.content = data['content']
+    db.session.commit()
+    return Response(json.dumps({'message': 'Content updated successfully!'}), status=200, mimetype='application/json')
+
 
 
 if __name__ == '__main__':

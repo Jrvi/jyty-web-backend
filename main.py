@@ -9,12 +9,14 @@ from flask_cors import CORS
 import jwt
 
 load_dotenv()
+db_driver = os.getenv('DB_DRIVER', 'pymysql')
+
 
 app = Flask(__name__)
 CORS(app)
 
 app.config[
-    'SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{os.getenv('DATABASE_USER')}:{os.getenv('DATABASE_PASSWORD')}@{os.getenv('DATABASE_HOST')}:{os.getenv('DATABASE_PORT')}/{os.getenv('DATABASE_NAME')}"
+    'SQLALCHEMY_DATABASE_URI'] = f"mysql+{db_driver}://{os.getenv('DATABASE_USER')}:{os.getenv('DATABASE_PASSWORD')}@{os.getenv('DATABASE_HOST')}:{os.getenv('DATABASE_PORT')}/{os.getenv('DATABASE_NAME')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')

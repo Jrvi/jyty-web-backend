@@ -38,7 +38,7 @@ jobs:
 
     # 4. Yhdistä palvelimeen ja siirrä tiedostot
     - name: Copy files to server
-      uses: appleboy/scp-action@v0.2.1
+      uses: appleboy/scp-action@v0.1.5
       with:
         host: ${{ secrets.RASPBERRY_PI_IP }}
         username: ${{ secrets.PROD_USER }}
